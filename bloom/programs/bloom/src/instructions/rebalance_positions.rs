@@ -137,7 +137,7 @@ pub fn handler(
             ctx.accounts.token_a.decimals,
             ctx.accounts.token_b.decimals,
         );
-        emit!(PositionInRange{
+        emit!(PositionInRange {
             lower_price: lower_price,
             current_price: current_price,
             upper_price: upper_price,
@@ -430,6 +430,7 @@ pub fn handler(
     // reload to get correct amounts after swap
     ctx.accounts.token_a_vault.reload().unwrap();
     ctx.accounts.token_b_vault.reload().unwrap();
+    ctx.accounts.pool.reload().unwrap();
 
     msg!(
         "after_swap:\ttoken_a_vault: {}, token_b_vault: {}",
@@ -499,8 +500,8 @@ pub fn handler(
             ]],
         ),
         liquidity,
-        u64::MAX,
-        u64::MAX,
+        token_max_a,
+        token_max_b,
     )?;
 
     ctx.accounts.token_a_vault.reload().unwrap();
