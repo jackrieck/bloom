@@ -1,0 +1,27 @@
+[package]
+name = "bloom"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "bloom"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[profile.release]
+overflow-checks = true
+
+[dependencies]
+anchor-lang = { version = "0.24.1", features = ["init-if-needed"] }
+anchor-spl = "0.24.1"
+whirlpools = "0.3.0"
+whirlpool = { git = "https://github.com/orca-so/whirlpools.git", tag = "0.4.0", features = ["cpi", "no-entrypoint"] }
+anchor-lang-for-whirlpool = { git = "https://github.com/project-serum/anchor", tag = "v0.20.1", version = "0.20.1", package = "anchor-lang" }
+rust_decimal = { version = "1.26", features = ["maths"] }

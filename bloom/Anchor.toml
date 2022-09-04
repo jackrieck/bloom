@@ -1,0 +1,22 @@
+[features]
+seeds = false
+
+[programs.localnet]
+bloom = "9ryxeAa6TDqRm8maHYyAi8w6X8KxbY8biXsi279vGJJN"
+
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "/Users/jack/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test.validator]
+url = "https://ssc-dao.genesysgo.net"
+
+# whirlpool
+[[test.validator.clone]]
+address = "whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc"
