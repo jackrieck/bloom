@@ -103,7 +103,7 @@ describe("bloom", () => {
     assert.equal(0, poolTokenMint.supply);
   });
 
-  it("call rebalance when position is still in range", async () => {
+  it("call rebalance when position is in range", async () => {
     const [user1BloomClient, user1TestClient] = await initUserClients(
       connection
     );
@@ -125,6 +125,52 @@ describe("bloom", () => {
     await user1BloomClient.rebalancePositions(vaultManagerAddress);
 
     await waitForPositionInRangeEvent;
+  });
+
+  it.only("call rebalance when position is out of range", async () => {
+    const [user1BloomClient, user1TestClient] = await initUserClients(
+      connection
+    );
+
+    // create whirlpool vault with mints and mint tokens to declared users
+    const poolAddress = await user1TestClient.initTestEnvironment([
+      user1BloomClient.provider.wallet.publicKey,
+    ]);
+
+    // initialize bloom vault
+    const vaultManagerAddress = await user1BloomClient.initializeVault(
+      poolAddress
+    );
+
+    const vaultManager = await user1BloomClient.fetchVaultManager(
+      vaultManagerAddress
+    );
+
+    const tokenADecimals = (
+      await splToken.getMint(
+        user1BloomClient.provider.connection,
+        vaultManager.tokenA,
+        "confirmed"
+      )
+    ).decimals;
+
+    await user1BloomClient.addLiquidity(
+      vaultManagerAddress,
+      new anchor.BN(10 * 10 ** tokenADecimals)
+    );
+
+    // swap until position is out of range
+    let positionInRange = await user1BloomClient.isPositionInRange(
+      vaultManagerAddress
+    );
+    while (positionInRange) {
+      await user1TestClient.swapAtoB(vaultManagerAddress, 5);
+      positionInRange = await user1BloomClient.isPositionInRange(
+        vaultManagerAddress
+      );
+    }
+
+    await user1BloomClient.rebalancePositions(vaultManagerAddress);
   });
 });
 

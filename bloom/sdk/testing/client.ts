@@ -529,7 +529,7 @@ export class Client {
 
       const tokenAmount = DecimalUtil.toU64(
         DecimalUtil.fromNumber(
-          (Math.floor(Math.random() * 1000) + 1) * 10 ** decimals
+          (Math.floor(Math.random() * 3000) + 1) * 10 ** decimals
         )
       );
 
