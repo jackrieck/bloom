@@ -324,8 +324,8 @@ export class Client {
 
     const increaseComputeBudgetIx =
       anchor.web3.ComputeBudgetProgram.requestUnits({
-        units: 1_400_000, // MAX
-        additionalFee: 5000,
+        units: 600_000,
+        additionalFee: 0,
       });
 
     const rebalanceOpenPositionTxSig = await this.program.methods

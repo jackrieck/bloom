@@ -127,7 +127,7 @@ describe("bloom", () => {
     await waitForPositionInRangeEvent;
   });
 
-  it.only("call rebalance when position is out of range", async () => {
+  it("call rebalance when position is out of range", async () => {
     const [user1BloomClient, user1TestClient] = await initUserClients(
       connection
     );
