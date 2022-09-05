@@ -459,7 +459,7 @@ pub fn handler(
         "liquidity: {}, token_max_a: {}, token_max_b: {}",
         liquidity,
         token_max_a,
-        token_max_b
+        token_max_b,
     );
 
     if token_max_b > ctx.accounts.token_b_vault.amount {
