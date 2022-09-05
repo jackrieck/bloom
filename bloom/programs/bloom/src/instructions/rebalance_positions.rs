@@ -420,7 +420,7 @@ pub fn handler(
                 ]],
             ),
             token_a_max_out,
-            ctx.accounts.token_b_vault.amount,
+            0,
             MIN_SQRT_PRICE_X64,
             true,
             a_to_b,
