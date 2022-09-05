@@ -26,6 +26,9 @@ pub struct InitializeVault<'info> {
 
     pub pool: Box<Account<'info, Whirlpool>>,
 
+    #[account(init, payer = admin, space = BloomPosition::space(), seeds = [pool_position.key().as_ref()], bump)]
+    pub bloom_position: Account<'info, BloomPosition>,
+
     /// CHECK: initialized by the Whirlpool Program
     #[account(mut, seeds = [b"position", pool_position_mint.key().as_ref()], bump, seeds::program = whirlpool_program)]
     pub pool_position: UncheckedAccount<'info>,
@@ -64,22 +67,34 @@ pub struct VaultManager {
     pub pool: Pubkey,
     pub token_a_pool_vault: Pubkey,
     pub token_b_pool_vault: Pubkey,
-    pub pool_position: Pubkey,
-    pub pool_position_mint: Pubkey,
-    pub pool_position_mint_seed: String,
-    pub pool_position_token_account: Pubkey,
     pub admin: Pubkey,
+    pub positions: Vec<Pubkey>, // max 10
 }
 
 impl VaultManager {
     pub fn space() -> usize {
-        8 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + (4 + 6) + 32 + 32
+        8 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + 32 + (4 + (32 * 10))
+    }
+}
+
+#[account]
+pub struct BloomPosition {
+    pub position: Pubkey,
+    pub mint: Pubkey,
+    pub token_account: Pubkey,
+    pub mint_seed: u8,
+    pub is_primary: bool,
+}
+
+impl BloomPosition {
+    pub fn space() -> usize {
+        8 + 32 + 32 + 1 + 1
     }
 }
 
 pub fn handler(
     ctx: Context<InitializeVault>,
-    pool_position_mint_seed: String,
+    pool_position_mint_seed: u8,
     lower_tick_index: i32,
     upper_tick_index: i32,
 ) -> Result<()> {
@@ -102,7 +117,7 @@ pub fn handler(
             open_position_accounts,
             &[&[
                 b"pool_position_mint",
-                pool_position_mint_seed.as_bytes(),
+                &pool_position_mint_seed.to_le_bytes(),
                 ctx.accounts.pool.key().as_ref(),
                 &[*ctx.bumps.get("pool_position_mint").unwrap()],
             ]],
@@ -114,6 +129,7 @@ pub fn handler(
         upper_tick_index,
     )?;
 
+    // set vault manager data
     let vault_manager = &mut ctx.accounts.vault_manager;
 
     vault_manager.token_a = ctx.accounts.token_a.key();
@@ -124,11 +140,17 @@ pub fn handler(
     vault_manager.pool = ctx.accounts.pool.key();
     vault_manager.token_a_pool_vault = ctx.accounts.token_a_pool_vault.key();
     vault_manager.token_b_pool_vault = ctx.accounts.token_b_pool_vault.key();
-    vault_manager.pool_position = ctx.accounts.pool_position.key();
-    vault_manager.pool_position_mint = ctx.accounts.pool_position_mint.key();
-    vault_manager.pool_position_mint_seed = pool_position_mint_seed;
-    vault_manager.pool_position_token_account = ctx.accounts.pool_position_token_account.key();
     vault_manager.admin = ctx.accounts.admin.key();
+    vault_manager.positions.push(ctx.accounts.bloom_position.key());
+
+    // set initial position data
+    let bloom_position = &mut ctx.accounts.bloom_position;
+
+    bloom_position.position = ctx.accounts.pool_position.key();
+    bloom_position.mint = ctx.accounts.pool_position_mint.key();
+    bloom_position.token_account = ctx.accounts.pool_position_token_account.key();
+    bloom_position.mint_seed = pool_position_mint_seed;
+    bloom_position.is_primary = true;
 
     Ok(())
 }
