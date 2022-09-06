@@ -11,7 +11,10 @@ use whirlpools::cpi::{
     accounts::{
         ClosePosition, CollectFees, DecreaseLiquidity, IncreaseLiquidity, OpenPosition, Swap,
     },
-    {close_position, collect_fees, decrease_liquidity, increase_liquidity, open_position, swap},
+    {
+        close_position, collect_fees, decrease_liquidity, increase_liquidity, open_position,
+        swap as whirlpool_swap,
+    },
 };
 use whirlpools::program::Whirlpool as WhirlpoolProgram;
 use whirlpools::state::{TickArray, Whirlpool};
@@ -347,6 +350,26 @@ pub fn handler(
         current_price,
     );
 
+    let swap_accounts = Swap {
+        token_program: ctx.accounts.token_program.to_account_info(),
+        token_authority: ctx.accounts.vault_manager.to_account_info(),
+        whirlpool: ctx.accounts.pool.to_account_info(),
+        token_owner_account_a: ctx.accounts.token_a_vault.to_account_info(),
+        token_owner_account_b: ctx.accounts.token_b_vault.to_account_info(),
+        token_vault_a: ctx.accounts.token_a_pool_vault.to_account_info(),
+        token_vault_b: ctx.accounts.token_b_pool_vault.to_account_info(),
+        tick_array0: ctx.accounts.tick_array_current.to_account_info(),
+        tick_array1: ctx.accounts.tick_array_current.to_account_info(),
+        tick_array2: ctx.accounts.tick_array_current.to_account_info(),
+        oracle: ctx.accounts.oracle.to_account_info(),
+    };
+
+    let pool_key = ctx.accounts.pool.key();
+    let vault_manager_seeds: &[&[&[u8]]] = &[&[
+        pool_key.as_ref(),
+        &[*ctx.bumps.get("vault_manager").unwrap()],
+    ]];
+
     if token_b_leftover_amount > 0.0 {
         msg!("need to swap token B for token A");
         let token_b_max_out = math::ui_amount_to_amount(
@@ -357,29 +380,14 @@ pub fn handler(
 
         let a_to_b = false;
 
-        let swap_accounts = Swap {
-            token_program: ctx.accounts.token_program.to_account_info(),
-            token_authority: ctx.accounts.vault_manager.to_account_info(),
-            whirlpool: ctx.accounts.pool.to_account_info(),
-            token_owner_account_a: ctx.accounts.token_a_vault.to_account_info(),
-            token_owner_account_b: ctx.accounts.token_b_vault.to_account_info(),
-            token_vault_a: ctx.accounts.token_a_pool_vault.to_account_info(),
-            token_vault_b: ctx.accounts.token_b_pool_vault.to_account_info(),
-            tick_array0: ctx.accounts.tick_array_current.to_account_info(),
-            tick_array1: ctx.accounts.tick_array_current.to_account_info(),
-            tick_array2: ctx.accounts.tick_array_current.to_account_info(),
-            oracle: ctx.accounts.oracle.to_account_info(),
-        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.whirlpool_program.to_account_info(),
+            swap_accounts,
+            vault_manager_seeds,
+        );
 
         swap(
-            CpiContext::new_with_signer(
-                ctx.accounts.whirlpool_program.to_account_info(),
-                swap_accounts,
-                &[&[
-                    ctx.accounts.pool.key().as_ref(),
-                    &[*ctx.bumps.get("vault_manager").unwrap()],
-                ]],
-            ),
+            cpi_ctx,
             token_b_max_out,
             0,
             MAX_SQRT_PRICE_X64,
@@ -396,29 +404,14 @@ pub fn handler(
 
         let a_to_b = true;
 
-        let swap_accounts = Swap {
-            token_program: ctx.accounts.token_program.to_account_info(),
-            token_authority: ctx.accounts.vault_manager.to_account_info(),
-            whirlpool: ctx.accounts.pool.to_account_info(),
-            token_owner_account_a: ctx.accounts.token_a_vault.to_account_info(),
-            token_owner_account_b: ctx.accounts.token_b_vault.to_account_info(),
-            token_vault_a: ctx.accounts.token_a_pool_vault.to_account_info(),
-            token_vault_b: ctx.accounts.token_b_pool_vault.to_account_info(),
-            tick_array0: ctx.accounts.tick_array_current.to_account_info(),
-            tick_array1: ctx.accounts.tick_array_current.to_account_info(),
-            tick_array2: ctx.accounts.tick_array_current.to_account_info(),
-            oracle: ctx.accounts.oracle.to_account_info(),
-        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.whirlpool_program.to_account_info(),
+            swap_accounts,
+            vault_manager_seeds,
+        );
 
         swap(
-            CpiContext::new_with_signer(
-                ctx.accounts.whirlpool_program.to_account_info(),
-                swap_accounts,
-                &[&[
-                    ctx.accounts.pool.key().as_ref(),
-                    &[*ctx.bumps.get("vault_manager").unwrap()],
-                ]],
-            ),
+            cpi_ctx,
             token_a_max_out,
             0,
             MIN_SQRT_PRICE_X64,
@@ -520,6 +513,24 @@ pub fn handler(
     vault_manager.pool_position_token_account = ctx.accounts.new_pool_position_token_account.key();
 
     Ok(())
+}
+
+fn swap<'info>(
+    cpi_ctx: CpiContext<'_, '_, '_, 'info, Swap<'info>>,
+    amount: u64,
+    other_amount_threshold: u64,
+    sqrt_price_limit: u128,
+    amount_specified_is_input: bool,
+    a_to_b: bool,
+) -> Result<()> {
+    whirlpool_swap(
+        cpi_ctx,
+        amount,
+        other_amount_threshold,
+        sqrt_price_limit,
+        amount_specified_is_input,
+        a_to_b,
+    )
 }
 
 fn position_in_range(
